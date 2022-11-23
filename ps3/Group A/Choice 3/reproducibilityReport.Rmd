@@ -45,7 +45,11 @@ knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 ```{r}
 library(tidyverse) # for data munging
 library(knitr) # for kable table formating
-library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
+```
+
+
+```{r}
+library(haven) # import and export 'SinsPSS', 'Stata' and 'SAS' Files
 library(readxl) # import excel files
 
 # #optional packages:
@@ -87,27 +91,92 @@ d <- data %>%
 ```{r}
 # reproduce the above results here
 
+# group by condition 
+by_cond <- d %>% group_by(Cond)
 ```
+
+
+```{r}
+
+# determine the means of the grouped data and other valus for calculating the confidence intervls. can also guess the conditions based on the means   
+stats <- summarise( by_cond,
+  mean = mean(expense),
+  sd = sd(expense),
+  n = length(expense),
+  se = sd/ sqrt(n)
+
+)
+```
+
+```{r}
+#  guess z-score that corresponds to confidence interval, then calculate confidence intervals for each group 
+alpha = 0.001
+z_score = 1.96
+stats %>% summarise(
+  margin_error = z_score * se,
+  lower_bound = mean - margin_error,
+  mean2 = mean,
+  upper_bound = mean + margin_error
+)
+
+
+# reference: https://www.statisticshowto.com/probability-and-statistics/confidence-interval/#CIZ2
+```
+
 
 ## Inferential statistics
 
 > A 2 (scarcity condition) × 2 (account condition) analysis of variance revealed a significant interaction, F(1, 69) = 5.16, p < .05, ηp2 = .07.
 
 ```{r}
-# reproduce the above results here
 
+# two way anova to study interaction between the conditions... => data only has levels 0 - 3 in a single column, which need to be grouped...
+# scarcity conditions are time rich: [1,3] vs time poor [0,2]
+# account conditions are small account [1, 0] vs big account [3,2]
+
+# create a new column time_rich, where if Cond = 1,3, time_rich =1. Otherwise, = 0. Same for big_account
+
+new_data <- data %>%
+  mutate(time_rich = case_when(
+    data$Cond %in% c(1,3) ~ 1,
+    data$Cond %in% c(0,2) ~ 0
+    )) %>%
+    mutate(big_account = case_when(
+    data$Cond %in% c(3,2) ~ 1,
+    data$Cond %in% c(1,0) ~ 0
+    ))
+```
+
+
+```{r}
+# now can do interaction test 
+
+interaction <- aov(expense ~ time_rich * big_account, data = new_data)
+summary(interaction)
+
+# ref: https://www.scribbr.com/statistics/two-way-anova/
+```
+```{r}
+library(lsr)
+```
+
+
+```{r}
+etaSquared(interaction)
+
+# ref: https://www.r-bloggers.com/2022/01/how-to-perform-eta-squared-in-r/
 ```
 
 # Step 5: Reflection
 
 Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
 
-> ANSWER HERE
+> I was mostly able to reproduce the results I attempted. I got the same mean and confidence intervals in the descriptive statistics section. I also showed that the interaction between variables in the inferential statistics section was significant with p < .05, and demonstrated a partial eta squared of 0.07. However, I did not get the same F-score.
 
 How difficult was it to reproduce your results? 
 
-> ANSWER HERE
+> It was quite difficult.
 
 What aspects made it difficult? What aspects made it easy?
 
-> ANSWER HERE
+> It was difficult because I am not extremely familiar with the statistical tests the authors used, and there seem to be many ways on the internet to calculate confidence intervals and interaction. Also, the authors did not use very descriptive naming for their variables, which means I had to infer which condition was which. The task was made easier by the ability to use the internet.

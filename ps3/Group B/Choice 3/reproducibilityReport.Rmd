@@ -39,10 +39,10 @@ library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
 library(readxl) # import excel files
 
 # #optional packages/functions:
-# library(afex) # anova functions
-# library(ez) # anova functions 2
-# library(scales) # for plotting
-# std.err <- function(x) sd(x)/sqrt(length(x)) # standard error
+library(afex) # anova functions
+library(ez) # anova functions 2
+library(scales) # for plotting
+std.err <- function(x) sd(x)/sqrt(length(x)) # standard error
 ```
 
 # Step 2: Load data
@@ -56,15 +56,55 @@ d <- read_excel(data_path, sheet=3)
 # Step 3: Tidy data
 
 ```{r}
-
+# data are already tidy 
 ```
 
 # Step 4: Run analysis
 
 ## Pre-processing
+```{r}
+# rename column with rating data 
+d <- d %>% 
+       rename("rating" = "Agreement (0=complete disagreement; 5=complete agreement)")
+
+# maybe drop NaNs?
+```
+```{r}
+# change data structure 
+d$participant<-as.factor(d$participant)
+d$group<-as.factor(d$group)
+d$subscale<-as.factor(d$subscale)
+d$item<-as.factor(d$item)
+str(d)
+```
 
 ```{r}
+# remove participant 25
 
+#excluded <- "25"
+
+#d <- d %>% filter(!participant %in% excluded) #participant exclusions
+```
+
+
+```{r}
+# drop items column, then remove duplicate entries...
+d  = subset(d, select = -c(item) )
+```
+
+```{r}
+d2 <- d  %>% distinct()
+
+```
+
+
+```{r}
+# would like to know what groups are there..
+unique(d$group)
+```
+
+```{r}
+unique(d$participant)
 ```
 
 ## Descriptive statistics
@@ -73,41 +113,79 @@ Try to recreate Figure 2 (fig2.png, also included in the same folder as this Rmd
 
 ```{r}
 
+# group by Moroccan, PAST or FUTURE, and calc mean and standard error 
+# same for spanish 
+
+groups <- d %>% group_by(group, subscale)  %>% summarise(avg = mean(rating), std_err = std.err(rating))
+
 ```
+```{r}
+
+ggplot(groups, aes(x=group, weight=avg, ymin=avg-std_err, ymax=avg+std_err, fill=subscale)) +
+     geom_bar      (position=position_dodge(), aes(y=avg), stat="identity") +
+     geom_errorbar (position=position_dodge(), colour="black") 
+```
+
 
 ## Inferential statistics
 
 > According to a mixed analysis of variance (ANOVA) with group (Spanish vs. Moroccan) as a between-subjects factor and temporal focus (past vs. future) as a within-subjects factor, temporal focus differed significantly between Spaniards and Moroccans, as indicated by a significant interaction of temporal focus and group, F(1, 78) = 19.12, p = .001, ηp2 = .20 (Fig. 2).
 
 ```{r}
-# reproduce the above results here
-
+# take 1, mixed models
+#fit_nice <- aov_ez("participant","rating",d,between=c("group"),within=c("subscale"),return="nice")
 ```
+```{r}
+# take 2, mixed models
+fit_mixed <- mixed(rating~group*subscale+(group|participant),data=d)
+```
+
+```{r}
+# results -> df is off..
+fit_mixed
+```
+
+```{r}
+# take 3, mixed models... df is half of what it should be 
+aov.1 <- aov_car(rating ~ group*subscale + Error(participant/(group*subscale)), data=d2)
+aov.1
+```
+
 
 > Moroccans showed greater agreement with past-focused statements than Spaniards did, t(78) = 4.04, p = .001, 
 
 ```{r}
-# reproduce the above results here
+# reproduce the above results here -> df is wrong
+m_rate <- d2 %>% filter(group == "Moroccan", subscale== "PAST") %>% select(rating)
+s_rate <- d2 %>% filter(group == "young Spaniard", subscale== "PAST") %>% select(rating)
+t.test(m_rate, s_rate,)
 
 ```
+
 
 > and Spaniards showed greater agreement with future-focused statements than Moroccans did, t(78) = −3.32, p = .001.(de la Fuente et al., 2014, p. 1685)
 
 ```{r}
 # reproduce the above results here
+m_rate <- d2 %>% filter(group == "Moroccan", subscale== "FUTURE") %>% select(rating)
+s_rate <- d2 %>% filter(group == "young Spaniard", subscale== "FUTURE") %>% select(rating)
+t.test(m_rate, s_rate,)
+
 
 ```
+> I have reached the three hour limit of time to work on this.
 
 # Step 5: Reflection
 
 Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
 
-> ANSWER HERE
+
+> I was able to reproduce the desciptive bar plot. However, my statistical tests came out with the wrong degrees of freedom, and were thus incorrect.
 
 How difficult was it to reproduce your results? 
 
-> ANSWER HERE
+> Very difficult.
 
 What aspects made it difficult? What aspects made it easy?
 
-> ANSWER HERE
+> This was difficult because I am not sure what the authors did to the data in order to get n=78. I tried different pre-processing schemes and various functions for a task, but could not get the correct result. It was easy to understand the experimemts the authors carried out, but difficult to reproduce their statistics.

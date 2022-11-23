@@ -1,0 +1,11 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/968648/b752587c08e54b6f87764c5275782015
+bundleId: https://api.rpubs.com/api/v1/document/968648/b752587c08e54b6f87764c5275782015
+url: http://rpubs.com/jnwagwu/968648
+when: 1668067553.15183
+lastSyncTime: 1668067553.15185
